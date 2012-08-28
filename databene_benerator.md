@@ -129,16 +129,71 @@ Il peut arriver que vous vouliez mettre des champs à NULL lors de votre génér
 ##### Les expressions régulières  
 Les expressions régulières sont usitées pour les attributs devant respecter un certain modèle. Ainsi, pour un numéro de téléphone, on aura:    
 
-``` s  
+```    
+<attribut name="une_chaine" type="string" pattern="[0-9]{10}"/>
 ```
 
-##### Les données à partir
-##### Les variables
-## Gestion des clefs étrangères
-## Volumétries importantes
-## Retours d'expérience
+##### Les variables  
+
+Les variables sont utilisées de la manière suivante:  
+  
+ ```  
+<generate name="TABLE_VARIABLE" type="TABLE_VARIABLE" count="1000000" consumer="db">
+<variable name="siren" type="string" pattern="[0-9]{9}"/>    
+<variable name="entreprise" type="string" constant="entreprise"/>
+<attribut name="SIREN" type="string" script="siren"/>  
+<attribut name="ENTREPRISE" type="string" script="entreprise + siren" 
+</generate>
+```   
+*Ici, on génère deux variables "siren" et "entreprise" et on les utilise avec l'attribut "script"*  
+
+##### Les données à partir de fichiers  
+  
+La lecture à partir d'un fichier csv est très utile. Par exemple pour générer des noms de villes associées à leurs codes postaux, vous pouvez utiliser un fichier csv. Exemple:
+Fichier: *villes_CP.ent.csv* (notez le **.ent** qui est très important).  
+Structure: **VILLE,CP**  
+  
+Code:   
+ 
+ ```  
+<generate name="TABLE_VILLE_CP" type="TABLE_VILLE_CP" count="1000000" consumer="db">
+<variable name="ville_cp" type="entity" source="villes_CP.ent.csv" distribution="random""/>  
+<attribut name="VILLE" type="string" script="ville_cp.VILLE"/>  
+<attribut name="CP" type="string" script="ville_cp.CP"/>
+</generate>
+```    
+
+## Gestion des clefs étrangères  
+  
+Les clefs étrangères sont un réel problème dans les bases de données. Pour générer des clefs étrangères, rien de bien compliqué. Dans l'exemple suivant, nous allons générer une clef étrangère pour la table **TABLE_CIBLE** pointant vers la table **TABLE_SOURCE**.  
+  
+| TABLE_CIBLE | TABLE_SOURCE  
+| ----------- | ------------  
+| id_cible | id_source  
+| #fk_id_source |  
+  
+ ```  
+<generate name="TABLE_CIBLE" type="TABLE_CIBLE" count="1000000" consumer="db">
+<variable name="fk_id_source" source="db" select="SELECT ID_SOURCE from TABLE_SOURCE" distribution="random""/>  
+<id name="ID" generator="new DBSeqHiLoGenerator('SEQ_TABLE_CIBLE',1,db)"/>
+<reference name="FK_ID_SOURCE" script="fk_id_source[0]"/>
+</generate>
+``` 
+
+
+## Volumétries importantes  
+  
+Tout fonctionne pour de petites volumétries, mais lorsque vous devez générer des dizaines de millions de données, vous vous retrouvez bien vite face à deux problèmes: l'utilisation de la mémoire et la réutilisation des données.    
+
+* Le premier problème peut-être contourné en utilisant des *distribution* dites "illimitées". Dans les exemples ci-dessus, vous avez pu voir d'écrit *distribution="random"*. Cela veut dire que les données sont prises de façon aléatoire, mais des exceptions concernant la capacité de la mémoire peuvent être levées. Pour y remédier, nous vous conseillons *distribution="expand"* qui convient parfaitement aux importants volumes de données.    
+
+* Pour le second problème, vous pouvez rajouter l'attribut *cyclic="true"* qui permet de faire des tours en boucle dans les données quand toutes ont été utilisées.  
+  
+  
 
 ----------  
+## Retours d'expérience
+
 Pour les retours d'expérience, je vous propose dans cette première version du wiki Benerator de nous appuyer sur le déroulement d'une partie d'un projet important pour adhoc: le projet **ARPEJ_AREF**.
 
 Lors de ce projet, le client avait une base de données contenant près de 60 tables et avait commencé à migrer les données existentes vers une nouvelle version de la BD. Le problème était que la migration n'avait que partiellement réussie. C'était donc à nous de gonfler la base de données en générant de très grosses quantités d'information.  

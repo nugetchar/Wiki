@@ -62,7 +62,7 @@ Dans la section *&lt;database/>*, vous voyez les identifiants et autres élémen
 **user**="user"  
 **password**=""password"  
   
-![image](./warning.jpe)  : Lors de notre première utilisation de benerator, nous devions travailler sur une base de données Oracle, située à distance et dont l'ip changeait à cause d'un cluster. Ainsi, et cela est marqué dans la section **Retours d'expérience**, une erreur peut être levée dans ce contexte, stoppant la génération de données.
+![image](./warning.png)  : Lors de notre première utilisation de benerator, nous devions travailler sur une base de données Oracle, située à distance et dont l'ip changeait à cause d'un cluster. Ainsi, et cela est marqué dans la section **Retours d'expérience**, une erreur peut être levée dans ce contexte, stoppant la génération de données.
 
 
 ## Génération d'une table  
@@ -106,9 +106,32 @@ Là encore, il existe d'autre Generators décrits dans le manuel.
 
 ##### Les champs à NULL  
   
-Il peut arriver que vous vouliez mettre des champs à NULL lors de votre génération. La manière de procéder n'est pas la même pour les types   
+Il peut arriver que vous vouliez mettre des champs à NULL lors de votre génération. La manière de procéder n'est pas la même pour les types d'attributs.  
 
-##### Les expressions régulières
+*Pour une date*:    
+
+```  
+<attribut name="DATESUPPRESSION" type="date" nullable="true"/>  
+```
+  
+*Pour un attribut quelconque*:  
+  
+```    
+<attribut name="whatever" type="whatever_too" constant="null"/>    
+```  
+  
+*Pour une clef étrangère*:  
+  
+```   
+<reference name="fk" nullQuota="1"/>  
+```  
+   
+##### Les expressions régulières  
+Les expressions régulières sont usitées pour les attributs devant respecter un certain modèle. Ainsi, pour un numéro de téléphone, on aura:    
+
+``` s  
+```
+
 ##### Les données à partir
 ##### Les variables
 ## Gestion des clefs étrangères

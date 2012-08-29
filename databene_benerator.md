@@ -90,7 +90,9 @@ Il y a plusieurs manières de configurer la génération d'id. Nous vous conseil
 </generate>
 ```
 Ce Generator prend en paramètres le nom d'une séquence, l'incrément, ainsi que la source (donc notre base de données en l'occurence). **La séquence doit déjà exister dans la base de données!**  
-Vous pouvez néanmoins utiliser d'autres Generators pour les ID et qui sont explicités dans [le manuel](http://databene.org/download/databene-benerator-manual-0.7.6.pdf "Manuel officiel").
+Vous pouvez néanmoins utiliser d'autres Generators pour les ID et qui sont explicités dans [le manuel](http://databene.org/download/databene-benerator-manual-0.7.6.pdf "Manuel officiel").  
+  
+**Il existe des Generator pour les adresses, les personnes, etc. Il faut déclarer ce que l'on appelle le *domaine* du générator dans la balise <import> que vous pouvez voir en haut du fichier**
 
 ##### Les dates    
   
@@ -278,7 +280,7 @@ Il fallait donc premièrement générer les adresses de la table ADRESSE d'une p
 Le code que l'on obtenait était:      
 
 ```
-<generate name="T_REFENTREPRISE" type="T_REFENTREPRISE" count="12000000" consumer="db" pageSize ="1000">
+<generate name="REFENTREPRISE" type="REFENTREPRISE" count="12000000" consumer="db" pageSize ="1000">
 	<id name="id" type="long" generator="new DBSeqHiLoGenerator('SEQ_REFENTREPRISE', 1, db)"/>
 	<attribute name="CREATEDATE" type="date" generator="new BirthDateGenerator(minAgeYears=1, 
 maxAgeYears=10)"/>
@@ -292,7 +294,7 @@ maxAgeYears=10)"/>
 	<attribute name="SIREN" type="string" pattern="[0-9]{14}" distribution="expand" unique="true"/>    
   
   
-	<generate name="T_REFETABLISSEMENT" type="T_REFETABLISSEMENT" count="17000000" consumer="db" pageSize="1000">
+	<generate name="REFETABLISSEMENT" type="REFETABLISSEMENT" count="17000000" consumer="db" pageSize="1000">
 		<variable name="siren_id_entr" source="db" selector="" distribution="expand"/>
 		<variable name="entreprise" type="string" pattern="Entreprise [0-9a-z]{3}"/>
 		<id name="id" type="long" generator="new DBSeqHiLoGenerator('SEQ_REFETABLISSEMENT',1,db)"/>
@@ -315,5 +317,44 @@ maxAgeYears=10)"/>
     	<reference name="REFENTREPRISE_FK_ID" script="siren_id_entr[0]"/>
 	</generate>
 </generate>
-```     
- 
+```  
+  
+* ##### Génération de données dans une plage limitée  
+Titre un peu barbare, mais problème qui s'est tout de même posé.  
+Le problème s'est posé quand nous voulions générer plusieurs données dans la table **REFENTREPRISE**. Cette table disposait déjà d'environs 9 millions d'entrées, ce qui réduisait les possibilités de génération sachant qu'une entreprise a un attribut *SIREN* qui doit être unique. Donc comment faire pour générer environs 3 millions d'entrées, chacune ayant un **siren** unique sachant qu'il existe déjà 9 millions d'entrées et que les **siren** déjà existant ne sont pas ordonnés?  
+Une solution proposée est de tester les plages disponibles avec une requête *SELECT* sur la table.  
+    
+
+```  
+ SELECT ID FROM REFENTREPRISE WHERE SIREN LIKE "114";  
+```  
+*Cette requête permet de voir combien il existe de siren commençant par 114*  
+Alors pourquoi une telle requête? Premièrement, on veut générer 3 millions d'entrées, donc on n'a besoin que de six chiffres variables. Vous pouvez donc fixer de manière arbitraire les trois premiers chiffres. Ensuite, le but est de trouver trois combinaisons (pour 3 millions) de trois chiffres pour lesquelles il n'y a aucune entrée de créée.  
+Cette requête permet donc de choisir les **siren** commençant par 114. Dans notre cas, nous avions pu trouver les **siren** commençant par 112, 113 et 114.  
+  
+* ##### Créer ses propres générateurs  
+Benerator permet l'utilisation de plusieurs générateurs. Le manuel montre ceux fournis par défaut, il est cependant possible de créer les siens.  
+Par exemple, dans notre première utilisation de cet outil, nous devions générer des données pour une table ACTEUR comprenant 9 attributs de type *date*. Pour une génération de données, plutôt que d'utiliser un Generator par date, il valait mieux optimiser et créer un Generator personnalisé qui fournissait une date commune aux attributs. Le code était le suivant:  
+  
+
+```
+<bean id="dtGen" class="DateTimeGenerator">
+	<property name='minDate' value='1998-01-01'/>
+	<property name='maxDate' value='2011-12-31'/>
+	<property name='dateGranularity' value='00-00-01' />
+	<property name='dateDistribution' value='random' />
+	<property name='minTime' value='08:00:00' />
+	<property name='maxTime' value='17:00:00' />
+	<property name='timeGranularity' value='00:00:01' />
+	<property name='timeDistribution' value='random' />
+</bean>  
+```  
+**Explications:**  
+*id="dtGen"* => ID du Generator pour le réutiliser.  
+*class="DateTimeGenerator"* => Benerator fourni ses propres classes, il faut donc spécifier laquelle vous utilisez.  
+*minDate et maxDate* => Définissent la plage dans laquelle le Generator va choisir ses valeurs.
+*dateGranularity* => À quel interval les dates seront choisies.  
+*dateDistribution* => ici nous avons mis random et non expand. Pourquoi? Parce que malgré la volumétrie importante, il ne s'agit là que d'une génération de date, pas d'extraction de données à partir de la base ou d'un fichier.  
+*minTime et maxTime* => Même principe que minDate et maxDate.  
+*timeGranularity et timeDistribution* => idem.  
+  
